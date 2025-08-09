@@ -30,14 +30,21 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
+from aiohttp import request
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 from pydantic import BaseModel, Field
 
 from mcp.server.fastmcp import Context, FastMCP
 
+from mcp.shared import exceptions
+
 # Load environment variables
 load_dotenv()
+
+AUTH_TOKEN = os.getenv("MCP_AUTH_TOKEN")
+if not AUTH_TOKEN:
+    raise RuntimeError("MCP_AUTH_TOKEN not set in environment.")
 
 # Initialize the MCP server
 mcp = FastMCP("Freelance Gig Aggregator", instructions="""
@@ -267,6 +274,17 @@ def check_rate_compatibility(user_min: float, user_max: float, gig_budget_min: O
     return 0.5  # Unknown budget
 
 
+def verify_bearer_auth(request_headers: dict):
+    """Verify Bearer token from request headers."""
+    auth_header = request_headers.get("authorization") or request_headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        raise exceptions.MCPError("Unauthorized", code=401)
+    
+    token = auth_header.split(" ", 1)[1]
+    if token != AUTH_TOKEN:
+        raise exceptions.MCPError("Invalid token", code=401)
+
+
 # Resources
 @mcp.resource("freelance://profile/{profile_id}")
 def get_user_profile(profile_id: str) -> str:
@@ -351,7 +369,9 @@ def search_gigs(skills: List[str], max_budget: Optional[float] = None,
         project_type: Type of project (fixed_price, hourly, retainer, contest)
         platforms: List of platforms to search (upwork, fiverr, freelancer, etc.)
     """
-    
+
+    verify_bearer_auth(request.get("headers", {}))
+
     filtered_gigs = []
     
     for gig in db.gigs.values():
@@ -416,6 +436,41 @@ def search_gigs(skills: List[str], max_budget: Optional[float] = None,
 
 
 @mcp.tool()
+def validate() -> str:
+    """
+    Return the server owner's phone number in the required format:
+      {country_code}{number}
+    Example: 919876543210 (for +91-9876543210)
+
+    This reads one of:
+      - OWNER_PHONE (single env var containing the full digits, e.g. 919876543210)
+      - OWNER_COUNTRY_CODE and OWNER_PHONE_NUMBER (e.g. 91 and 9876543210)
+
+    It strips non-digit characters and returns the digits-only string.
+    """
+
+    verify_bearer_auth(request.get("headers", {}))
+
+    # Prefer a single env var
+    phone = os.getenv("OWNER_PHONE", "") or ""
+    if not phone:
+        cc = os.getenv("OWNER_COUNTRY_CODE", "") or ""
+        num = os.getenv("OWNER_PHONE_NUMBER", "") or ""
+        phone = f"{cc}{num}"
+
+    # Remove any non-digit characters
+    digits = re.sub(r"\D", "", phone)
+
+    if not digits:
+        # Explicit error so it's obvious the server isn't configured
+        raise ValueError(
+            "Owner phone not configured. Set OWNER_PHONE or OWNER_COUNTRY_CODE + OWNER_PHONE_NUMBER in your environment."
+        )
+
+    return digits
+
+
+@mcp.tool()
 def analyze_profile_fit(profile_data: Dict[str, Any], gig_id: str) -> Dict[str, Any]:
     """
     Analyze how well a user profile fits a specific gig
@@ -424,6 +479,8 @@ def analyze_profile_fit(profile_data: Dict[str, Any], gig_id: str) -> Dict[str, 
         profile_data: User profile information
         gig_id: ID of the gig to analyze fit for
     """
+
+    verify_bearer_auth(request.get("headers", {}))
     
     gig = db.gigs.get(gig_id)
     if not gig:
@@ -490,6 +547,8 @@ async def generate_proposal(gig_id: str, user_profile: Dict[str, Any],
         include_portfolio: Whether to include portfolio references
         custom_message: Additional custom message to include
     """
+
+    verify_bearer_auth(request.get("headers", {}))
     
     if not llm:
         return {"error": "ChatGroq not initialized. Please set GROQ_API_KEY environment variable."}
@@ -572,7 +631,9 @@ async def negotiate_rate(current_rate: float, target_rate: float,
         project_complexity: Complexity level (low, medium, high)
         justification_points: List of points to justify higher rate
     """
-    
+
+    verify_bearer_auth(request.get("headers", {}))
+
     if not llm:
         return {"error": "ChatGroq not initialized. Please set GROQ_API_KEY environment variable."}
     
@@ -660,7 +721,9 @@ def create_user_profile(name: str, title: str, skills_data: List[Dict[str, Any]]
         location: Location/timezone
         languages: List of languages spoken
     """
-    
+
+    verify_bearer_auth(request.get("headers", {}))
+
     skills = []
     for skill_data in skills_data:
         skill = Skill(
@@ -706,6 +769,8 @@ def code_review(file_path: str, review_type: str = "general") -> Dict[str, Any]:
         file_path: Path to the code file to review
         review_type: Type of review (general, security, performance, style)
     """
+
+    verify_bearer_auth(request.get("headers", {}))
     
     try:
         file_path_obj = Path(file_path)
@@ -805,6 +870,8 @@ def code_debug(file_path: str, issue_description: str, fix_type: str = "auto",
         fix_type: Type of fix (auto, manual, suggest)
         backup: Whether to create a backup before making changes
     """
+
+    verify_bearer_auth(request.get("headers", {}))
     
     try:
         file_path_obj = Path(file_path)
@@ -948,6 +1015,8 @@ async def optimize_profile(profile_id: str, target_niche: str = "",
         profile_id: ID of the profile to optimize
         target_niche: Specific niche to optimize for (optional)
     """
+
+    verify_bearer_auth(request.get("headers", {}))
     
     if not llm:
         return {"error": "ChatGroq not initialized. Please set GROQ_API_KEY environment variable."}
@@ -1044,6 +1113,8 @@ def track_application_status(applications: List[Dict[str, Any]]) -> Dict[str, An
     Args:
         applications: List of application data with status updates
     """
+
+    verify_bearer_auth(request.get("headers", {}))
     
     total_apps = len(applications)
     if total_apps == 0:
@@ -1132,9 +1203,9 @@ def main():
         # Run with stdio transport for local connection
         mcp.run(transport="stdio")
     elif args.transport == "sse":
-        mcp.run(transport="sse", host="localhost", port=8000)
+        mcp.run(transport="sse")
     elif args.transport == "streamable-http":
-        mcp.run(transport="streamable-http", host="localhost", port=8001)
+        mcp.run(transport="streamable-http")
 
 
 if __name__ == "__main__":
