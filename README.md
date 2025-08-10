@@ -65,13 +65,13 @@ python freelance_client.py --mode interactive
 your-project/
 ├── freelance_server.py     # MCP Server (from previous artifact)
 ├── freelance_client.py     # MCP Client (main file)
-├── freelance_client2.py     # MCP Client (side-client file)
+├── freelance_client2.py    # MCP Client (side-client file)
 ├── main.py                 # MCP Client #MCP Server(demo file)
 ├── requirements.txt        # Dependencies
-├── .env                   # Environment variables (create this)
-├── .env.sample           # Sample environment file
-├── README.md             # This guide
-└── setup.py                #Setup files
+├── .env                    # Environment variables (create this)
+├── .env.sample             # Sample environment file
+├── README.md               # This guide
+└── setup.py                # Setup files
 ```
 
 ## Usage Examples
