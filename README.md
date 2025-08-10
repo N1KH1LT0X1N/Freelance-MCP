@@ -12,10 +12,11 @@
 
 ```bash
 # Install required dependencies
-pip install -r requirements.txt
+uv pip install -r requirements.txt
 
 # Or install individual packages
-pip install mcp langchain-groq pydantic python-dotenv
+uv pip install mcp langchain-groq pydantic python-dotenv
+```
 ```
 
 ### 3. Environment Setup
@@ -37,7 +38,14 @@ cp .env.sample .env
 3. Create a new API key
 4. Copy it to your `.env` file
 
-### 5. Run the Client
+### 5. Run the Server
+
+```bash
+# Start MCP Inspector (runs both Proxy and Local Server)
+uv run mcp dev freelance_server.py
+```
+
+### 6. Run the Client
 
 ```bash
 # Check environment setup
@@ -59,7 +67,8 @@ your-project/
 ├── requirements.txt        # Dependencies
 ├── .env                   # Environment variables (create this)
 ├── .env.sample           # Sample environment file
-└── README.md             # This guide
+├── README.md             # This guide
+└── setup.py                #Setup files
 ```
 
 ## Usage Examples
@@ -249,6 +258,22 @@ uv run mcp install freelance_server.py --name "Freelance Gig Aggregator"
 
 # With environment variables
 uv run mcp install freelance_server.py -v GROQ_API_KEY=your_key
+```
+
+### Integration with ngrok for https connection
+
+```bash
+# Install the ngrok application
+[Download ngrok for Windows](https://ngrok.com/downloads/windows)
+
+#Configure and run
+Add your authtoken:
+    ngrok config add-authtoken <token>
+
+Start an endpoint:
+    ngrok http port_number
+
+Congratulations, you have an endpoint online!
 ```
 
 ### API Extensions

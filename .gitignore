@@ -11,3 +11,5 @@ wheels/
 
 #Env Files
 .env
+
+#main python files
