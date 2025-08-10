@@ -29,7 +29,8 @@ python freelance_client.py --create-env
 # Copy .env.sample to .env and add your GROQ_API_KEY
 cp .env.sample .env
 
-# Edit .env and add: GROQ_API_KEY=your_actual_key_here
+# Edit .env and add:
+GROQ_API_KEY=your_actual_key_here
 ```
 
 ### 4. Get GROQ API Key
