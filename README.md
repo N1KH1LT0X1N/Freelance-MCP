@@ -17,7 +17,6 @@ uv pip install -r requirements.txt
 # Or install individual packages
 uv pip install mcp langchain-groq pydantic python-dotenv
 ```
-```
 
 ### 3. Environment Setup
 
@@ -26,8 +25,10 @@ uv pip install mcp langchain-groq pydantic python-dotenv
 python freelance_client.py --create-env
 
 # Edit the .env file with your API keys
+
 # Copy .env.sample to .env and add your GROQ_API_KEY
 cp .env.sample .env
+
 # Edit .env and add: GROQ_API_KEY=your_actual_key_here
 ```
 
@@ -63,7 +64,9 @@ python freelance_client.py --mode interactive
 ```
 your-project/
 ├── freelance_server.py     # MCP Server (from previous artifact)
-├── freelance_client.py     # MCP Client (this file)
+├── freelance_client.py     # MCP Client (main file)
+├── freelance_client2.py     # MCP Client (side-client file)
+├── main.py     # MCP Client #MCP Server(demo file)
 ├── requirements.txt        # Dependencies
 ├── .env                   # Environment variables (create this)
 ├── .env.sample           # Sample environment file
