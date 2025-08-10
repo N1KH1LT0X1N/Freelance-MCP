@@ -1,5 +1,5 @@
 """
-Freelance Gig Aggregator MCP Server
+Freelance Gig Aggregator MCP Server with Bearer Authentication
 
 A comprehensive MCP server for aggregating freelance opportunities across multiple platforms,
 matching user skills with available gigs, and automating proposal generation with rate negotiation.
@@ -11,6 +11,7 @@ Features:
 - Rate negotiation assistance
 - Code review and debugging tools
 - Profile optimization recommendations
+- Bearer token authentication
 
 Installation:
     pip install mcp langchain-groq pydantic python-dotenv
@@ -30,31 +31,72 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
-from aiohttp import request
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 from pydantic import BaseModel, Field
 
 from mcp.server.fastmcp import Context, FastMCP
-
-from mcp.shared import exceptions
+from mcp.server.auth.provider import AccessToken, TokenVerifier
 
 # Load environment variables
 load_dotenv()
 
 AUTH_TOKEN = os.getenv("MCP_AUTH_TOKEN")
 if not AUTH_TOKEN:
-    raise RuntimeError("MCP_AUTH_TOKEN not set in environment.")
+    print("Warning: MCP_AUTH_TOKEN not set in environment. Running without authentication.")
 
-# Initialize the MCP server
-mcp = FastMCP("Freelance Gig Aggregator", instructions="""
+# Bearer Auth Implementation
+class SimpleBearerTokenVerifier(TokenVerifier):
+    """Simple Bearer token verifier that validates against a single token"""
+    
+    def __init__(self, valid_token: str):
+        self.valid_token = valid_token
+    
+    async def verify_token(self, token: str) -> AccessToken | None:
+        """Verify the provided token and return AccessToken if valid"""
+        if token == self.valid_token:
+            return AccessToken(
+                token=token,
+                client_id="freelance-client",
+                scopes=["read", "write"],
+                expires_at=None,  # Token doesn't expire
+                subject="freelance-user"
+            )
+        return None
+
+# Initialize the MCP server with conditional authentication
+if AUTH_TOKEN:
+    # With authentication for stdio
+    mcp = FastMCP(
+        "Freelance Gig Aggregator", 
+        instructions="""
 A comprehensive freelance platform aggregator that helps users:
 - Find and match relevant gigs across multiple platforms
 - Generate personalized proposals and applications
 - Negotiate rates and terms
 - Review and debug code for projects
 - Optimize freelance profiles and strategies
-""")
+""",
+        auth={
+            "type": "bearer",
+            "issuer_url": "http://localhost:6274",
+            "resource_server_url": "http://localhost:6274"
+        },
+        token_verifier=SimpleBearerTokenVerifier(AUTH_TOKEN)
+    )
+else:
+    # Without authentication for SSE/HTTP
+    mcp = FastMCP(
+        "Freelance Gig Aggregator", 
+        instructions="""
+A comprehensive freelance platform aggregator that helps users:
+- Find and match relevant gigs across multiple platforms
+- Generate personalized proposals and applications
+- Negotiate rates and terms
+- Review and debug code for projects
+- Optimize freelance profiles and strategies
+""",
+    )
 
 # Initialize Langchain ChatGroq
 try:
@@ -274,17 +316,6 @@ def check_rate_compatibility(user_min: float, user_max: float, gig_budget_min: O
     return 0.5  # Unknown budget
 
 
-def verify_bearer_auth(request_headers: dict):
-    """Verify Bearer token from request headers."""
-    auth_header = request_headers.get("authorization") or request_headers.get("Authorization")
-    if not auth_header or not auth_header.startswith("Bearer "):
-        raise exceptions.MCPError("Unauthorized", code=401)
-    
-    token = auth_header.split(" ", 1)[1]
-    if token != AUTH_TOKEN:
-        raise exceptions.MCPError("Invalid token", code=401)
-
-
 # Resources
 @mcp.resource("freelance://profile/{profile_id}")
 def get_user_profile(profile_id: str) -> str:
@@ -369,9 +400,8 @@ def search_gigs(skills: List[str], max_budget: Optional[float] = None,
         project_type: Type of project (fixed_price, hourly, retainer, contest)
         platforms: List of platforms to search (upwork, fiverr, freelancer, etc.)
     """
-
-    verify_bearer_auth(request.get("headers", {}))
-
+    # Authentication is handled automatically by FastMCP when AUTH_TOKEN is set
+    
     filtered_gigs = []
     
     for gig in db.gigs.values():
@@ -448,9 +478,6 @@ def validate() -> str:
 
     It strips non-digit characters and returns the digits-only string.
     """
-
-    verify_bearer_auth(request.get("headers", {}))
-
     # Prefer a single env var
     phone = os.getenv("OWNER_PHONE", "") or ""
     if not phone:
@@ -479,9 +506,6 @@ def analyze_profile_fit(profile_data: Dict[str, Any], gig_id: str) -> Dict[str, 
         profile_data: User profile information
         gig_id: ID of the gig to analyze fit for
     """
-
-    verify_bearer_auth(request.get("headers", {}))
-    
     gig = db.gigs.get(gig_id)
     if not gig:
         return {"error": f"Gig {gig_id} not found"}
@@ -547,9 +571,6 @@ async def generate_proposal(gig_id: str, user_profile: Dict[str, Any],
         include_portfolio: Whether to include portfolio references
         custom_message: Additional custom message to include
     """
-
-    verify_bearer_auth(request.get("headers", {}))
-    
     if not llm:
         return {"error": "ChatGroq not initialized. Please set GROQ_API_KEY environment variable."}
     
@@ -631,9 +652,6 @@ async def negotiate_rate(current_rate: float, target_rate: float,
         project_complexity: Complexity level (low, medium, high)
         justification_points: List of points to justify higher rate
     """
-
-    verify_bearer_auth(request.get("headers", {}))
-
     if not llm:
         return {"error": "ChatGroq not initialized. Please set GROQ_API_KEY environment variable."}
     
@@ -721,9 +739,6 @@ def create_user_profile(name: str, title: str, skills_data: List[Dict[str, Any]]
         location: Location/timezone
         languages: List of languages spoken
     """
-
-    verify_bearer_auth(request.get("headers", {}))
-
     skills = []
     for skill_data in skills_data:
         skill = Skill(
@@ -769,9 +784,6 @@ def code_review(file_path: str, review_type: str = "general") -> Dict[str, Any]:
         file_path: Path to the code file to review
         review_type: Type of review (general, security, performance, style)
     """
-
-    verify_bearer_auth(request.get("headers", {}))
-    
     try:
         file_path_obj = Path(file_path)
         if not file_path_obj.exists():
@@ -870,9 +882,6 @@ def code_debug(file_path: str, issue_description: str, fix_type: str = "auto",
         fix_type: Type of fix (auto, manual, suggest)
         backup: Whether to create a backup before making changes
     """
-
-    verify_bearer_auth(request.get("headers", {}))
-    
     try:
         file_path_obj = Path(file_path)
         if not file_path_obj.exists():
@@ -1015,9 +1024,6 @@ async def optimize_profile(profile_id: str, target_niche: str = "",
         profile_id: ID of the profile to optimize
         target_niche: Specific niche to optimize for (optional)
     """
-
-    verify_bearer_auth(request.get("headers", {}))
-    
     if not llm:
         return {"error": "ChatGroq not initialized. Please set GROQ_API_KEY environment variable."}
     
@@ -1113,9 +1119,6 @@ def track_application_status(applications: List[Dict[str, Any]]) -> Dict[str, An
     Args:
         applications: List of application data with status updates
     """
-
-    verify_bearer_auth(request.get("headers", {}))
-    
     total_apps = len(applications)
     if total_apps == 0:
         return {"error": "No applications provided"}
@@ -1196,6 +1199,8 @@ def main():
     parser.add_argument("transport", nargs="?", default="stdio", 
                        choices=["stdio", "sse", "streamable-http"],
                        help="Transport method (default: stdio)")
+    parser.add_argument("--port", type=int, default=6274, help="Port for HTTP/SSE transport")
+    parser.add_argument("--host", type=str, default="localhost", help="Host for HTTP/SSE transport")
     
     args = parser.parse_args()
     
@@ -1203,9 +1208,13 @@ def main():
         # Run with stdio transport for local connection
         mcp.run(transport="stdio")
     elif args.transport == "sse":
-        mcp.run(transport="sse")
+        # Run with SSE transport
+        print(f"Starting SSE server on http://{args.host}:{args.port}")
+        mcp.run(transport="sse", host=args.host, port=args.port)
     elif args.transport == "streamable-http":
-        mcp.run(transport="streamable-http")
+        # Run with HTTP transport
+        print(f"Starting HTTP server on http://{args.host}:{args.port}")
+        mcp.run(transport="streamable-http", host=args.host, port=args.port)
 
 
 if __name__ == "__main__":
