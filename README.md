@@ -66,7 +66,7 @@ your-project/
 ├── freelance_server.py     # MCP Server (from previous artifact)
 ├── freelance_client.py     # MCP Client (main file)
 ├── freelance_client2.py     # MCP Client (side-client file)
-├── main.py     # MCP Client #MCP Server(demo file)
+├── main.py                 # MCP Client #MCP Server(demo file)
 ├── requirements.txt        # Dependencies
 ├── .env                   # Environment variables (create this)
 ├── .env.sample           # Sample environment file
