@@ -9,10 +9,10 @@ wheels/
 # Virtual environments
 .venv
 
-#Env Files
+# Env Files
 .env
 
-#main python files
+# main python files
 freelance_client.py
 freelance_client2.py
 main.py
