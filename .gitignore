@@ -13,3 +13,6 @@ wheels/
 .env
 
 #main python files
+freelance_client.py
+freelance_client2.py
+main.py
