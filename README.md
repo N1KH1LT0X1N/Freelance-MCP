@@ -1,4 +1,50 @@
-# Freelance MCP Client - Installation and Usage Guide
+# Freelance MCP Server - Installation and Usage Guide
+
+A comprehensive freelance platform aggregator MCP server that helps users find gigs, generate proposals, negotiate rates, and optimize their freelance profiles using AI.
+
+## 🚀 Quick Start for Claude Desktop Users
+
+**Want to use this with Claude Desktop right away? Follow these 3 steps:**
+
+1. **Get a GROQ API Key** (free): Visit [console.groq.com](https://console.groq.com/), sign up, and create an API key
+
+2. **Add to Claude Desktop config** - Edit your `claude_desktop_config.json`:
+   - **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+   - **Mac**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+
+   Add this to the `mcpServers` section (replace paths and keys with yours):
+   ```json
+   {
+     "mcpServers": {
+       "freelance": {
+         "command": "uv",
+         "args": [
+           "run",
+           "--with", "mcp",
+           "--with", "python-dotenv",
+           "--with", "langchain-groq",
+           "--with", "pydantic",
+           "C:\\path\\to\\your\\freelance_server.py",
+           "stdio"
+         ],
+         "env": {
+           "GROQ_API_KEY": "gsk_your_key_here",
+           "OWNER_COUNTRY_CODE": "1",
+           "OWNER_PHONE_NUMBER": "5551234567"
+         }
+       }
+     }
+   }
+   ```
+
+3. **Restart Claude Desktop** and start using commands like:
+   - "Search for Python gigs under $1000"
+   - "Show me freelance market trends"
+   - "Generate a proposal for gig upwork_001"
+
+**Need more detailed instructions?** See [Integration with Claude Desktop](#integration-with-claude-desktop-recommended) below.
+
+---
 
 ## Quick Start
 
@@ -20,18 +66,27 @@ uv pip install mcp langchain-groq pydantic python-dotenv
 
 ### 3. Environment Setup
 
+Create a `.env` file in your project directory with your API keys:
+
 ```bash
-# Create environment file (run this command)
-python freelance_client.py --create-env
+# Windows
+echo GROQ_API_KEY=your_actual_key_here > .env
+echo OWNER_COUNTRY_CODE=1 >> .env
+echo OWNER_PHONE_NUMBER=5551234567 >> .env
 
-# Edit the .env file with your API keys
-
-# Copy .env.sample to .env and add your GROQ_API_KEY
-cp .env.sample .env
-
-# Edit .env and add:
+# Linux/Mac
+cat > .env << EOF
 GROQ_API_KEY=your_actual_key_here
+OWNER_COUNTRY_CODE=1
+OWNER_PHONE_NUMBER=5551234567
+EOF
 ```
+
+**Required Environment Variables:**
+- `GROQ_API_KEY` - Your Groq API key (get from https://console.groq.com/)
+- `OWNER_COUNTRY_CODE` - Country code without + (e.g., 1 for US, 44 for UK)
+- `OWNER_PHONE_NUMBER` - Phone number without country code or special characters
+- `MCP_AUTH_TOKEN` - (Optional) Authentication token for advanced setups
 
 ### 4. Get GROQ API Key
 
@@ -42,10 +97,18 @@ GROQ_API_KEY=your_actual_key_here
 
 ### 5. Run the Server
 
+**Option A: Test Server Directly (for development)**
 ```bash
-# Start MCP Inspector (runs both Proxy and Local Server)
-uv run mcp dev freelance_server.py
+# Test server in stdio mode
+python freelance_server.py stdio
+
+# Or with uv and dependencies
+uv run --with mcp --with python-dotenv --with langchain-groq --with pydantic freelance_server.py stdio
 ```
+
+**Option B: Use with Claude Desktop (recommended)**
+
+See the [Integration with Claude Desktop](#integration-with-claude-desktop-recommended) section below for full setup instructions.
 
 ### 6. Run the Client
 
@@ -64,15 +127,14 @@ python freelance_client.py --mode interactive
 
 ```
 your-project/
-├── freelance_server.py     # MCP Server (from previous artifact)
-├── freelance_client.py     # MCP Client (main file)
-├── freelance_client2.py    # MCP Client (side-client file)
-├── main.py                 # MCP Client #MCP Server(demo file)
+├── freelance_server.py     # MCP Server (main server file)
+├── freelance_client.py     # MCP Client (optional - for testing)
+├── freelance_client2.py    # MCP Client (alternative implementation)
+├── main.py                 # Demo file
 ├── requirements.txt        # Dependencies
 ├── .env                    # Environment variables (create this)
-├── .env.sample             # Sample environment file
 ├── README.md               # This guide
-└── setup.py                # Setup files
+└── setup.py                # Setup configuration
 ```
 
 ## Usage Examples
@@ -254,31 +316,194 @@ Modify `freelance_client.py` to customize:
 - Error handling behavior
 - Output formatting
 
-### Integration with Claude Desktop
+### Integration with Claude Desktop (Recommended)
+
+**Step 1: Create Environment File**
+
+Create a `.env` file in your project directory:
 
 ```bash
-# Install the server for Claude Desktop
-uv run mcp install freelance_server.py --name "Freelance Gig Aggregator"
+# Windows
+copy NUL .env
 
-# With environment variables
-uv run mcp install freelance_server.py -v GROQ_API_KEY=your_key
+# Linux/Mac
+touch .env
 ```
 
-### Integration with ngrok for https connection
+Add your API keys to `.env`:
+
+```env
+GROQ_API_KEY=your_groq_api_key_here
+MCP_AUTH_TOKEN=your_optional_auth_token
+OWNER_COUNTRY_CODE=1
+OWNER_PHONE_NUMBER=5551234567
+```
+
+**Step 2: Get GROQ API Key**
+
+1. Visit [Groq Console](https://console.groq.com/)
+2. Sign up or log in
+3. Navigate to API Keys section
+4. Create a new API key
+5. Copy and paste it into your `.env` file
+
+**Step 3: Locate Claude Desktop Config**
+
+- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+- **Mac**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Linux**: `~/.config/Claude/claude_desktop_config.json`
+
+**Step 4: Update Claude Desktop Config**
+
+Open `claude_desktop_config.json` and add the freelance server configuration:
+
+```json
+{
+  "mcpServers": {
+    "freelance": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--with", "mcp",
+        "--with", "python-dotenv",
+        "--with", "langchain-groq",
+        "--with", "pydantic",
+        "/absolute/path/to/your/freelance_server.py",
+        "stdio"
+      ],
+       "env": {
+         "GROQ_API_KEY": "your_groq_api_key_here",
+         "MCP_AUTH_TOKEN": "your_optional_auth_token",
+         "OWNER_COUNTRY_CODE": "1",
+         "OWNER_PHONE_NUMBER": "5551234567"
+       }
+    }
+  }
+}
+```
+
+**Important Notes:**
+- Replace `/absolute/path/to/your/freelance_server.py` with the actual full path to your `freelance_server.py` file
+- On Windows, use double backslashes: `C:\\Users\\YourName\\MCPs\\freelance_server.py`
+- On Mac/Linux, use forward slashes: `/Users/YourName/MCPs/freelance_server.py`
+- Replace all placeholder values with your actual API keys and phone number
+
+**Windows Example:**
+```json
+{
+  "mcpServers": {
+    "freelance": {
+      "command": "C:\\Users\\YourName\\.local\\bin\\uv.EXE",
+      "args": [
+        "run",
+        "--with", "mcp",
+        "--with", "python-dotenv",
+        "--with", "langchain-groq",
+        "--with", "pydantic",
+        "C:\\Users\\YourName\\MCPs\\mcp-server-1\\freelance_server.py",
+        "stdio"
+      ],
+      "env": {
+         "GROQ_API_KEY": "gsk_xxxxxxxxxxxxxxxxxxxxx",
+         "MCP_AUTH_TOKEN": "your_optional_auth_token",
+         "OWNER_COUNTRY_CODE": "1",
+         "OWNER_PHONE_NUMBER": "5551234567"
+      }
+    }
+  }
+}
+```
+
+**Step 5: Restart Claude Desktop**
+
+1. Completely quit Claude Desktop (not just close the window)
+2. Reopen Claude Desktop
+3. The freelance server should now be available
+
+**Step 6: Verify Installation**
+
+In Claude Desktop, try asking:
+- "Search for Python freelance gigs under $500"
+- "Show me current freelance market trends"
+- "Validate the owner phone number"
+
+**Troubleshooting Claude Desktop Integration:**
+
+1. **Server shows as "failed":**
+   - Check the logs: Open the "Open Logs Folder" from the error
+   - Look for `ModuleNotFoundError` - means dependencies are missing
+   - Verify all `--with` packages are included in args
+
+2. **"Server disconnected" error:**
+   - Ensure `stdio` is the last argument in args array
+   - Check that the path to `freelance_server.py` is absolute and correct
+   - Verify `uv` is installed: Run `uv --version` in terminal
+
+3. **Environment variables not loading:**
+   - Double-check the `.env` file exists in the same directory as `freelance_server.py`
+   - Verify env values in `claude_desktop_config.json` match your `.env` file
+   - Make sure there are no extra quotes or spaces
+
+4. **Finding uv path (Windows):**
+   ```powershell
+   where.exe uv
+   ```
+
+5. **Finding uv path (Mac/Linux):**
+   ```bash
+   which uv
+   ```
+
+**Alternative: Manual Installation Method**
+
+If you prefer to install dependencies globally instead of using `--with` flags:
 
 ```bash
-# Install the ngrok application
-[Download ngrok for Windows](https://ngrok.com/downloads/windows)
+# Install dependencies globally with uv
+uv pip install mcp python-dotenv langchain-groq pydantic
 
-#Configure and run
-Add your authtoken:
-    ngrok config add-authtoken <token>
-
-Start an endpoint:
-    ngrok http port_number
-
-Congratulations, you have an endpoint online!
+# Then use simpler config
+{
+  "mcpServers": {
+    "freelance": {
+      "command": "uv",
+      "args": [
+        "run",
+        "/path/to/freelance_server.py",
+        "stdio"
+      ],
+      "env": {
+        "GROQ_API_KEY": "your_key_here",
+        "OWNER_COUNTRY_CODE": "1",
+        "OWNER_PHONE_NUMBER": "5551234567"
+      }
+    }
+  }
+}
 ```
+
+### Integration with ngrok for Remote Access
+
+If you want to access your MCP server remotely via HTTPS:
+
+```bash
+# 1. Download and install ngrok
+# Visit: https://ngrok.com/download
+
+# 2. Add your authtoken (sign up at ngrok.com to get one)
+ngrok config add-authtoken <your_token>
+
+# 3. Start your MCP server on a specific port
+python freelance_server.py sse --port 8080
+
+# 4. In another terminal, expose it with ngrok
+ngrok http 8080
+
+# 5. Use the provided HTTPS URL to connect remotely
+# Example: https://abc123.ngrok.io
+```
+
+**Note:** For production use, consider implementing proper authentication and security measures.
 
 ### API Extensions
 
@@ -303,3 +528,44 @@ The client can be extended to:
 - No sensitive data is logged
 - Server runs in isolated process
 - Backup files include timestamps for safety
+
+## Available MCP Tools
+
+Once integrated with Claude Desktop, you'll have access to these tools:
+
+### 🔍 Search & Discovery
+- **`search_gigs`** - Search for freelance gigs by skills, budget, project type, and platform
+- **`validate`** - Validate server owner's phone number
+
+### 👤 Profile Management
+- **`create_user_profile`** - Create a new freelancer profile with skills and rates
+- **`analyze_profile_fit`** - Analyze how well a profile matches a specific gig
+- **`optimize_profile`** - Get AI-powered profile optimization recommendations
+
+### 📝 Proposals & Negotiation
+- **`generate_proposal`** - Generate personalized proposals using AI
+- **`negotiate_rate`** - Get rate negotiation strategies and messages
+
+### 💻 Code Tools
+- **`code_review`** - Review code quality with metrics and suggestions
+- **`code_debug`** - Debug and automatically fix code issues
+
+### 📊 Tracking
+- **`track_application_status`** - Track and analyze application performance
+
+### 📚 Resources
+- **`freelance://profile/{profile_id}`** - Access user profile data
+- **`freelance://gigs/{platform}`** - Get gigs from specific platforms
+- **`freelance://market-trends`** - View current market trends and insights
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+This project is open source and available under the MIT License.
+
+## Support
+
+For issues, questions, or contributions, please visit the [GitHub repository](https://github.com/N1KH1LT0X1N/Freelance-MCP).

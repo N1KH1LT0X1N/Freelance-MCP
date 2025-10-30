@@ -36,67 +36,22 @@ from langchain_groq import ChatGroq
 from pydantic import BaseModel, Field
 
 from mcp.server.fastmcp import Context, FastMCP
-from mcp.server.auth.provider import AccessToken, TokenVerifier
 
 # Load environment variables
 load_dotenv()
 
-AUTH_TOKEN = os.getenv("MCP_AUTH_TOKEN")
-if not AUTH_TOKEN:
-    print("Warning: MCP_AUTH_TOKEN not set in environment. Running without authentication.")
-
-# Bearer Auth Implementation
-class SimpleBearerTokenVerifier(TokenVerifier):
-    """Simple Bearer token verifier that validates against a single token"""
-    
-    def __init__(self, valid_token: str):
-        self.valid_token = valid_token
-    
-    async def verify_token(self, token: str) -> AccessToken | None:
-        """Verify the provided token and return AccessToken if valid"""
-        if token == self.valid_token:
-            return AccessToken(
-                token=token,
-                client_id="freelance-client",
-                scopes=["read", "write"],
-                expires_at=None,  # Token doesn't expire
-                subject="freelance-user"
-            )
-        return None
-
-# Initialize the MCP server with conditional authentication
-if AUTH_TOKEN:
-    # With authentication for stdio
-    mcp = FastMCP(
-        "Freelance Gig Aggregator", 
-        instructions="""
+# Initialize the MCP server (without authentication for now - Claude Desktop handles this)
+mcp = FastMCP(
+    "Freelance Gig Aggregator", 
+    instructions="""
 A comprehensive freelance platform aggregator that helps users:
 - Find and match relevant gigs across multiple platforms
 - Generate personalized proposals and applications
 - Negotiate rates and terms
 - Review and debug code for projects
 - Optimize freelance profiles and strategies
-""",
-        auth={
-            "type": "bearer",
-            "issuer_url": "http://localhost:6274",
-            "resource_server_url": "http://localhost:6274"
-        },
-        token_verifier=SimpleBearerTokenVerifier(AUTH_TOKEN)
-    )
-else:
-    # Without authentication for SSE/HTTP
-    mcp = FastMCP(
-        "Freelance Gig Aggregator", 
-        instructions="""
-A comprehensive freelance platform aggregator that helps users:
-- Find and match relevant gigs across multiple platforms
-- Generate personalized proposals and applications
-- Negotiate rates and terms
-- Review and debug code for projects
-- Optimize freelance profiles and strategies
-""",
-    )
+"""
+)
 
 # Initialize Langchain ChatGroq
 try:
@@ -473,8 +428,8 @@ def validate() -> str:
     Example: 919876543210 (for +91-9876543210)
 
     This reads one of:
-      - OWNER_PHONE (single env var containing the full digits, e.g. 919876543210)
-      - OWNER_COUNTRY_CODE and OWNER_PHONE_NUMBER (e.g. 91 and 9876543210)
+      - OWNER_PHONE (single env var containing the full digits, e.g. 15551234567)
+      - OWNER_COUNTRY_CODE and OWNER_PHONE_NUMBER (e.g. 1 and 5551234567)
 
     It strips non-digit characters and returns the digits-only string.
     """
