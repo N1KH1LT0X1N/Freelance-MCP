@@ -1,6 +1,6 @@
 # Freelance MCP Server - Installation and Usage Guide
 
-A comprehensive freelance platform aggregator MCP server that helps users find gigs, generate proposals, negotiate rates, and optimize their freelance profiles using AI.
+A comprehensive freelance platform aggregator MCP server that helps users find gigs, generate proposals, negotiate rates, and optimize their freelance profiles using AI
 
 ## 🚀 Quick Start for Claude Desktop Users
 
